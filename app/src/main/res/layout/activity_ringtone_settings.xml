@@ -1,0 +1,81 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFF7ED">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔔 Order Ringtone Settings"
+            android:textColor="#222222"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="18dp" />
+
+        <TextView
+            android:id="@+id/selectedToneText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/order_card"
+            android:padding="18dp"
+            android:text="Selected: Default Order Tone"
+            android:textColor="#222222"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/chooseRingtoneButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎵 CHOOSE RINGTONE"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/testRingtoneButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="▶ TEST RINGTONE"
+            android:textSize="17sp"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/stopTestButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⏹ STOP TEST"
+            android:textSize="17sp"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/defaultRingtoneButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="↩ USE DEFAULT ORDER TONE"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="नई ringtone save होने के बाद अगला order उसी ringtone से बजेगा।"
+            android:textColor="#555555"
+            android:textSize="15sp"
+            android:padding="8dp"
+            android:layout_marginTop="10dp" />
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="BACK"
+            android:layout_marginTop="14dp" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,120 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#FFF7ED">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔔  NEW ORDER"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="#9A3412"
+            android:gravity="center"
+            android:padding="10dp" />
+
+        <TextView
+            android:id="@+id/orderNumberText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#111827"
+            android:gravity="center"
+            android:paddingBottom="10dp" />
+
+        <TextView
+            android:id="@+id/restaurantText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#C2410C"
+            android:padding="12dp"
+            android:background="#FFEDD5" />
+
+        <TextView
+            android:id="@+id/customerText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="#1F2937"
+            android:lineSpacingExtra="4dp"
+            android:padding="12dp"
+            android:layout_marginTop="10dp"
+            android:background="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/itemsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="#1F2937"
+            android:lineSpacingExtra="4dp"
+            android:padding="12dp"
+            android:layout_marginTop="10dp"
+            android:background="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/totalsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#111827"
+            android:lineSpacingExtra="4dp"
+            android:padding="12dp"
+            android:layout_marginTop="10dp"
+            android:background="#FEF3C7" />
+
+        <Button
+            android:id="@+id/callButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📞 CALL CUSTOMER"
+            android:layout_marginTop="14dp" />
+
+        <Button
+            android:id="@+id/mapButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📍 OPEN GOOGLE MAP"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/restaurantWhatsappButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🍽️ SEND TO RESTAURANT"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:id="@+id/deliveryButtonsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <Button
+            android:id="@+id/openOrderButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✅ ACCEPT / OPEN FULL ORDER"
+            android:textSize="17sp"
+            android:layout_marginTop="14dp" />
+
+        <Button
+            android:id="@+id/dismissButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DISMISS"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp" />
+    </LinearLayout>
+</ScrollView>
