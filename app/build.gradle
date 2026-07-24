@@ -4,21 +4,23 @@ plugins {
 }
 
 android {
-    namespace 'com.uklanafood.restaurant'
+    namespace 'com.uklanafood.admin'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.uklanafood.restaurant"
+        applicationId 'com.uklanafood.restaurant'
         minSdk 23
         targetSdk 35
         versionCode 1
-        versionName "1.0.0"
+        versionName '1.0.0'
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile(
+                    'proguard-android-optimize.txt'
+            ), 'proguard-rules.pro'
         }
     }
 
