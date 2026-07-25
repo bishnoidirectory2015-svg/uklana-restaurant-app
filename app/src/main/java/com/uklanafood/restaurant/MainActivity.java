@@ -733,24 +733,21 @@ public class MainActivity extends AppCompatActivity {
                     continue;
                 }
 
-                String itemText =
-                        "• " +
-                                item.optInt("qty") +
-                                " × " +
-                                item.optString(
-                                        "name",
-                                        ""
-                                ) +
-                                "\n   Rate: " +
-                                item.optString(
-                                        "rate",
-                                        ""
-                                ) +
-                                "   |   Total: " +
-                                item.optString(
-                                        "line_total",
-                                        ""
-                                );
+                String itemName = item.optString("name", "").trim();
+                int itemQty = item.optInt("qty", 1);
+                String itemLineTotal = item.optString("line_total", "").trim();
+
+                // Multi-options may already contain quantity/price in the item name.
+                // Avoid duplicate qty/rate/total lines and show one clean item-total line only.
+                String itemText;
+                if (itemName.contains("=") || itemName.matches(".*[₹$]\\s*\\d+(?:\\.\\d+)?$")) {
+                    itemText = "• " + itemName;
+                } else {
+                    itemText = "• " + itemName + " × " + itemQty;
+                    if (!itemLineTotal.isEmpty()) {
+                        itemText += " = " + itemLineTotal;
+                    }
+                }
 
                 card.addView(
                         createTextView(
@@ -781,7 +778,7 @@ public class MainActivity extends AppCompatActivity {
 
         TextView orderTotal =
                 createTextView(
-                        "ORDER TOTAL: " +
+                        "ITEMS TOTAL: " +
                                 order.optString(
                                         "total",
                                         ""

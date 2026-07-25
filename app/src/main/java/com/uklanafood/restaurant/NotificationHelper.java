@@ -18,8 +18,8 @@ import androidx.core.app.NotificationManagerCompat;
 
 public final class NotificationHelper {
 
-    private static final String CHANNEL_PREFIX = "new_order_channel_";
-    private static final String CHANNEL_NAME = "New Orders";
+    public static final String CHANNEL_ID = "uklana_restaurant_orders_v1";
+    private static final String CHANNEL_NAME = "New Restaurant Orders";
 
     private NotificationHelper() {
     }
@@ -169,14 +169,7 @@ public final class NotificationHelper {
     public static String createNotificationChannel(Context context) {
         Uri ringtoneUri = RingtoneHelper.getRingtone(context);
 
-        String ringtoneValue =
-                ringtoneUri == null
-                        ? "default"
-                        : ringtoneUri.toString();
-
-        String channelId =
-                CHANNEL_PREFIX +
-                        Math.abs(ringtoneValue.hashCode());
+        String channelId = CHANNEL_ID;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager =
@@ -229,6 +222,12 @@ public final class NotificationHelper {
     }
 
     public static void recreateNotificationChannel(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.deleteNotificationChannel(CHANNEL_ID);
+            }
+        }
         createNotificationChannel(context);
     }
 
