@@ -20,10 +20,10 @@ public class MyFirebaseMessagingService
 
         Log.d(TAG, "New FCM token received");
 
-        SessionManager sessionManager =
-                new SessionManager(getApplicationContext());
-
-        sessionManager.saveFcmToken(token);
+        SessionManager.saveFcmToken(
+                getApplicationContext(),
+                token
+        );
 
         /*
          * Token WordPress server पर भेजने का code
@@ -57,13 +57,13 @@ public class MyFirebaseMessagingService
         );
 
         if (remoteMessage.getNotification() != null) {
-            if (isEmpty(title) &&
-                    remoteMessage.getNotification().getTitle() != null) {
+            if (isEmpty(title)
+                    && remoteMessage.getNotification().getTitle() != null) {
                 title = remoteMessage.getNotification().getTitle();
             }
 
-            if (isEmpty(message) &&
-                    remoteMessage.getNotification().getBody() != null) {
+            if (isEmpty(message)
+                    && remoteMessage.getNotification().getBody() != null) {
                 message = remoteMessage.getNotification().getBody();
             }
         }

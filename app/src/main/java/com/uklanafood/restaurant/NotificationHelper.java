@@ -79,7 +79,7 @@ public final class NotificationHelper {
 
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, channelId)
-                        .setSmallIcon(R.drawable.ic_notification)
+                        .setSmallIcon(R.mipmap.ic_launcher)
                         .setContentTitle(finalTitle)
                         .setContentText(finalMessage)
                         .setStyle(
@@ -88,9 +88,7 @@ public final class NotificationHelper {
                         )
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setCategory(NotificationCompat.CATEGORY_ALARM)
-                        .setVisibility(
-                                NotificationCompat.VISIBILITY_PUBLIC
-                        )
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
@@ -139,7 +137,7 @@ public final class NotificationHelper {
 
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, channelId)
-                        .setSmallIcon(R.drawable.ic_notification)
+                        .setSmallIcon(R.mipmap.ic_launcher)
                         .setContentTitle("Test New Order")
                         .setContentText(
                                 "Your selected order ringtone is working."
