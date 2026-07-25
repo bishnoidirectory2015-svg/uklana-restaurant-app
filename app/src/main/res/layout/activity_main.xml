@@ -16,16 +16,25 @@
   </LinearLayout>
   <Switch android:id="@+id/openSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
  </LinearLayout>
- <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:padding="16dp" android:background="#222222">
-  <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CURRENT ORDER TOTAL" android:textColor="#FFFFFF" android:textStyle="bold"/>
-   <TextView android:id="@+id/runningTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₹0" android:textColor="#FFFFFF" android:textSize="34sp" android:textStyle="bold"/>
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:background="#222222">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+   <Button android:id="@+id/paymentPendingTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PENDING PAYMENT"/>
+   <Button android:id="@+id/paymentReceivedTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="RECEIVED HISTORY"/>
   </LinearLayout>
-  <Button android:id="@+id/resetTotalButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RESET"/>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingTop="8dp">
+   <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PENDING PAYMENT" android:textColor="#FFFFFF" android:textStyle="bold"/>
+    <TextView android:id="@+id/runningTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₹0" android:textColor="#FFFFFF" android:textSize="34sp" android:textStyle="bold"/>
+   </LinearLayout>
+   <Button android:id="@+id/resetTotalButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RECEIVED"/>
+  </LinearLayout>
+  <LinearLayout android:id="@+id/receivedHistoryContainer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone" android:paddingTop="8dp"/>
  </LinearLayout>
  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="8dp">
-  <Button android:id="@+id/pendingTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PENDING\n0"/>
-  <Button android:id="@+id/doneTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="DONE\n0"/>
+  <Button android:id="@+id/pendingTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PENDING
+0"/>
+  <Button android:id="@+id/doneTab" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="DONE
+0"/>
  </LinearLayout>
  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingLeft="12dp" android:paddingRight="12dp">
   <TextView android:id="@+id/statusText" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Orders" android:textStyle="bold"/>

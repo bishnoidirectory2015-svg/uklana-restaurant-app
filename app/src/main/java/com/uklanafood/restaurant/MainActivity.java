@@ -43,6 +43,13 @@ public class MainActivity extends AppCompatActivity {
     private TextView pendingCount;
     private TextView doneCount;
     private Switch openSwitch;
+    private Button resetTotalButton;
+    private Button paymentPendingTab;
+    private Button paymentReceivedTab;
+    private LinearLayout receivedHistoryContainer;
+    private String currentPaymentTab = "pending";
+    private String latestPendingTotal = "₹0";
+    private JSONArray latestReceivedHistory = new JSONArray();
 
     private String currentTab = "pending";
 
@@ -131,6 +138,11 @@ public class MainActivity extends AppCompatActivity {
 
         openSwitch =
                 findViewById(R.id.openSwitch);
+
+        resetTotalButton = findViewById(R.id.resetTotalButton);
+        paymentPendingTab = findViewById(R.id.paymentPendingTab);
+        paymentReceivedTab = findViewById(R.id.paymentReceivedTab);
+        receivedHistoryContainer = findViewById(R.id.receivedHistoryContainer);
     }
 
     private void setRestaurantInformation() {
@@ -165,8 +177,7 @@ public class MainActivity extends AppCompatActivity {
         Button doneTab =
                 findViewById(R.id.doneTab);
 
-        Button resetTotalButton =
-                findViewById(R.id.resetTotalButton);
+
 
         ringtoneButton.setOnClickListener(view -> {
             Intent intent = new Intent(
@@ -198,9 +209,17 @@ public class MainActivity extends AppCompatActivity {
             loadOrders(false);
         });
 
-        resetTotalButton.setOnClickListener(view ->
-                showResetConfirmation()
-        );
+        resetTotalButton.setOnClickListener(view -> showResetConfirmation());
+
+        paymentPendingTab.setOnClickListener(view -> {
+            currentPaymentTab = "pending";
+            renderPaymentPanel();
+        });
+
+        paymentReceivedTab.setOnClickListener(view -> {
+            currentPaymentTab = "received";
+            renderPaymentPanel();
+        });
 
         openSwitch.setOnCheckedChangeListener(
                 this::changeRestaurantOpenStatus
@@ -422,12 +441,10 @@ public class MainActivity extends AppCompatActivity {
                                     doneOrders
                     );
 
-                    totalText.setText(
-                            response.optString(
-                                    "running_total",
-                                    "₹0"
-                            )
-                    );
+                    latestPendingTotal = response.optString("running_total", "₹0");
+                    JSONArray history = response.optJSONArray("received_history");
+                    latestReceivedHistory = history != null ? history : new JSONArray();
+                    renderPaymentPanel();
                 });
 
             } catch (Exception exception) {
@@ -1016,19 +1033,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void showResetConfirmation() {
         new AlertDialog.Builder(this)
-                .setTitle("Total Reset")
-                .setMessage(
-                        "Current total ₹0 ho jayega. " +
-                                "Purana record admin me safe rahega."
-                )
+                .setTitle("Payment Received?")
+                .setMessage("Pending payment Received में भेजना है? Amount ₹0 होगा और date-time के साथ history में save रहेगा।")
                 .setNegativeButton(
                         "Cancel",
                         null
                 )
                 .setPositiveButton(
-                        "RESET",
-                        (dialog, which) ->
-                                resetRunningTotal()
+                        "RECEIVED",
+                        (dialog, which) -> resetRunningTotal()
                 )
                 .show();
     }
@@ -1061,18 +1074,12 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 runOnUiThread(() -> {
-                    totalText.setText(
-                            response.optString(
-                                    "running_total",
-                                    "₹0"
-                            )
-                    );
-
-                    Toast.makeText(
-                            this,
-                            "Total reset ho gaya",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    latestPendingTotal = response.optString("running_total", "₹0");
+                    JSONArray history = response.optJSONArray("received_history");
+                    latestReceivedHistory = history != null ? history : new JSONArray();
+                    currentPaymentTab = "received";
+                    renderPaymentPanel();
+                    Toast.makeText(this, response.optString("message", "Payment Received में save हो गया"), Toast.LENGTH_SHORT).show();
                 });
 
             } catch (Exception exception) {
@@ -1085,6 +1092,40 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
         }).start();
+    }
+
+    private void renderPaymentPanel() {
+        boolean pending = "pending".equals(currentPaymentTab);
+        paymentPendingTab.setAlpha(pending ? 1.0f : 0.55f);
+        paymentReceivedTab.setAlpha(pending ? 0.55f : 1.0f);
+        totalText.setVisibility(pending ? View.VISIBLE : View.GONE);
+        resetTotalButton.setVisibility(pending ? View.VISIBLE : View.GONE);
+        receivedHistoryContainer.setVisibility(pending ? View.GONE : View.VISIBLE);
+
+        if (pending) {
+            totalText.setText(latestPendingTotal);
+            return;
+        }
+
+        receivedHistoryContainer.removeAllViews();
+        if (latestReceivedHistory == null || latestReceivedHistory.length() == 0) {
+            TextView empty = createTextView("Abhi koi received payment history nahi hai.", 15, false);
+            empty.setTextColor(Color.WHITE);
+            receivedHistoryContainer.addView(empty);
+            return;
+        }
+
+        for (int i = 0; i < latestReceivedHistory.length() && i < 10; i++) {
+            JSONObject entry = latestReceivedHistory.optJSONObject(i);
+            if (entry == null) continue;
+            TextView row = createTextView(
+                    (i + 1) + ". " + entry.optString("amount", "₹0") + "  •  " + entry.optString("date_time", ""),
+                    15,
+                    i == 0
+            );
+            row.setTextColor(Color.WHITE);
+            receivedHistoryContainer.addView(row);
+        }
     }
 
     private void styleTabs() {
