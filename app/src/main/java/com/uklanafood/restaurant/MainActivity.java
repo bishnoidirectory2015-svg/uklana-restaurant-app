@@ -224,8 +224,22 @@ public class MainActivity extends AppCompatActivity {
                                 this,
                                 token
                         );
+                        uploadFirebaseToken(token);
                     }
                 });
+    }
+
+    private void uploadFirebaseToken(String token) {
+        if (!SessionManager.loggedIn(this) || token == null || token.trim().isEmpty()) return;
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("fcm_token", token.trim());
+                ApiClient.post(this, AppConfig.REGISTER_FCM_URL, body);
+            } catch (Exception ignored) {
+                // Next app launch/token refresh retries registration.
+            }
+        }).start();
     }
 
     @Override

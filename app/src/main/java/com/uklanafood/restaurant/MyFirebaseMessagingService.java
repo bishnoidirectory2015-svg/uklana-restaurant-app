@@ -25,10 +25,17 @@ public class MyFirebaseMessagingService
                 token
         );
 
-        /*
-         * Token WordPress server पर भेजने का code
-         * ApiClient में FCM token endpoint बनने के बाद यहां call होगा।
-         */
+        if (SessionManager.loggedIn(getApplicationContext())) {
+            new Thread(() -> {
+                try {
+                    org.json.JSONObject body = new org.json.JSONObject();
+                    body.put("fcm_token", token);
+                    ApiClient.post(getApplicationContext(), AppConfig.REGISTER_FCM_URL, body);
+                } catch (Exception exception) {
+                    Log.w(TAG, "FCM token upload failed", exception);
+                }
+            }).start();
+        }
     }
 
     @Override
