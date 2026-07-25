@@ -18,7 +18,8 @@ import androidx.core.app.NotificationManagerCompat;
 
 public final class NotificationHelper {
 
-    public static final String CHANNEL_ID = "uklana_restaurant_orders_v1";
+    public static final String CHANNEL_ID = "uklana_restaurant_orders_v2";
+    private static final String LEGACY_CHANNEL_ID = "uklana_restaurant_orders_v1";
     private static final String CHANNEL_NAME = "New Restaurant Orders";
 
     private NotificationHelper() {
@@ -91,7 +92,9 @@ public final class NotificationHelper {
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
-                        .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
+                        .setFullScreenIntent(pendingIntent, true)
+                        .setOnlyAlertOnce(false)
+                        .setDefaults(NotificationCompat.DEFAULT_ALL)
                         .setVibrate(
                                 new long[]{
                                         0,
@@ -146,6 +149,9 @@ public final class NotificationHelper {
                         .setCategory(NotificationCompat.CATEGORY_ALARM)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
+                        .setFullScreenIntent(pendingIntent, true)
+                        .setOnlyAlertOnce(false)
+                        .setDefaults(NotificationCompat.DEFAULT_ALL)
                         .setVibrate(
                                 new long[]{0, 600, 250, 600}
                         );
@@ -169,56 +175,81 @@ public final class NotificationHelper {
     public static String createNotificationChannel(Context context) {
         Uri ringtoneUri = RingtoneHelper.getRingtone(context);
 
-        String channelId = CHANNEL_ID;
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager =
-                    context.getSystemService(
-                            NotificationManager.class
+                    context.getSystemService(NotificationManager.class);
+
+            if (manager == null) {
+                return CHANNEL_ID;
+            }
+
+            android.content.SharedPreferences migrationPrefs =
+                    context.getSharedPreferences(
+                            "ukf_notification_channel_migration",
+                            Context.MODE_PRIVATE
                     );
 
-            NotificationChannel channel =
-                    new NotificationChannel(
-                            channelId,
-                            CHANNEL_NAME,
-                            NotificationManager.IMPORTANCE_HIGH
-                    );
+            if (!migrationPrefs.getBoolean("v2_done", false)) {
+                manager.deleteNotificationChannel(LEGACY_CHANNEL_ID);
+                manager.deleteNotificationChannel(CHANNEL_ID);
+                migrationPrefs.edit().putBoolean("v2_done", true).apply();
+            }
 
-            channel.setDescription(
-                    "Notifications for new restaurant orders"
+            createHighPriorityChannel(
+                    manager,
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    ringtoneUri
             );
 
-            channel.enableVibration(true);
-            channel.setVibrationPattern(
-                    new long[]{
-                            0,
-                            600,
-                            250,
-                            600,
-                            250,
-                            900
-                    }
+            // Keep the old server channel working too. Some existing FCM
+            // payloads may still specify uklana_restaurant_orders_v1.
+            createHighPriorityChannel(
+                    manager,
+                    LEGACY_CHANNEL_ID,
+                    CHANNEL_NAME + " (Legacy)",
+                    ringtoneUri
             );
-
-            channel.enableLights(true);
-            channel.setLightColor(Color.rgb(255, 122, 0));
-
-            AudioAttributes audioAttributes =
-                    new AudioAttributes.Builder()
-                            .setUsage(
-                                    AudioAttributes.USAGE_NOTIFICATION_EVENT
-                            )
-                            .setContentType(
-                                    AudioAttributes.CONTENT_TYPE_SONIFICATION
-                            )
-                            .build();
-
-            channel.setSound(ringtoneUri, audioAttributes);
-
-            manager.createNotificationChannel(channel);
         }
 
-        return channelId;
+        return CHANNEL_ID;
+    }
+
+    private static void createHighPriorityChannel(
+            NotificationManager manager,
+            String channelId,
+            String channelName,
+            Uri ringtoneUri
+    ) {
+        NotificationChannel channel =
+                new NotificationChannel(
+                        channelId,
+                        channelName,
+                        NotificationManager.IMPORTANCE_HIGH
+                );
+
+        channel.setDescription("Loud alerts for new restaurant orders");
+        channel.enableVibration(true);
+        channel.setVibrationPattern(
+                new long[]{0, 700, 250, 700, 250, 1000}
+        );
+        channel.enableLights(true);
+        channel.setLightColor(Color.rgb(255, 122, 0));
+        channel.setLockscreenVisibility(
+                android.app.Notification.VISIBILITY_PUBLIC
+        );
+        channel.setBypassDnd(false);
+
+        AudioAttributes audioAttributes =
+                new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(
+                                AudioAttributes.CONTENT_TYPE_SONIFICATION
+                        )
+                        .build();
+
+        channel.setSound(ringtoneUri, audioAttributes);
+        manager.createNotificationChannel(channel);
     }
 
     public static void recreateNotificationChannel(Context context) {
@@ -226,6 +257,7 @@ public final class NotificationHelper {
             NotificationManager manager = context.getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.deleteNotificationChannel(CHANNEL_ID);
+                manager.deleteNotificationChannel(LEGACY_CHANNEL_ID);
             }
         }
         createNotificationChannel(context);

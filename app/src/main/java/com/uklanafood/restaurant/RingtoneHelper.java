@@ -37,16 +37,18 @@ public final class RingtoneHelper {
         String savedUri = preferences.getString(KEY_RINGTONE_URI, "");
 
         if (savedUri == null || savedUri.trim().isEmpty()) {
-            return RingtoneManager.getDefaultUri(
-                    RingtoneManager.TYPE_NOTIFICATION
+            return Uri.parse(
+                    "android.resource://" + context.getPackageName()
+                            + "/" + R.raw.order_alert
             );
         }
 
         try {
             return Uri.parse(savedUri);
         } catch (Exception exception) {
-            return RingtoneManager.getDefaultUri(
-                    RingtoneManager.TYPE_NOTIFICATION
+            return Uri.parse(
+                    "android.resource://" + context.getPackageName()
+                            + "/" + R.raw.order_alert
             );
         }
     }

@@ -10,6 +10,6 @@ public final class AppConfig {
     public static final String DONE_URL = API_BASE + "/done-order";
     public static final String RESET_URL = API_BASE + "/reset-total";
     public static final String REGISTER_FCM_URL = API_BASE + "/register-fcm-token";
-    public static final String CHANNEL_ID = "uklana_restaurant_orders_v1";
+    public static final String CHANNEL_ID = "uklana_restaurant_orders_v2";
     public static final long REFRESH_MS = 15000L;
 }
