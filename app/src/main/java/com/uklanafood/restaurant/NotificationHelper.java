@@ -79,7 +79,7 @@ public final class NotificationHelper {
 
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, channelId)
-                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_app)
                         .setContentTitle(finalTitle)
                         .setContentText(finalMessage)
                         .setStyle(
@@ -137,7 +137,7 @@ public final class NotificationHelper {
 
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, channelId)
-                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_app)
                         .setContentTitle("Test New Order")
                         .setContentText(
                                 "Your selected order ringtone is working."
