@@ -14,4 +14,13 @@ public final class SessionManager {
     public static String phone(Context c) { return c.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("phone", ""); }
     public static boolean loggedIn(Context c) { return !token(c).isEmpty(); }
     public static void clear(Context c) { c.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().clear().apply(); }
+public void saveFcmToken(String token) {
+    preferences.edit()
+            .putString("fcm_token", token == null ? "" : token)
+            .apply();
+}
+
+public String getFcmToken() {
+    return preferences.getString("fcm_token", "");
+
 }

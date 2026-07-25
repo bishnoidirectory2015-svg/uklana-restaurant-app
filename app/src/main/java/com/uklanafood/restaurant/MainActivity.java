@@ -1,30 +1,1136 @@
 package com.uklanafood.restaurant;
 
-import android.Manifest;import android.content.Intent;import android.content.pm.PackageManager;import android.graphics.Color;import android.graphics.Typeface;import android.os.Build;import android.os.Bundle;import android.os.Handler;import android.os.Looper;import android.view.Gravity;import android.view.View;import android.widget.Button;import android.widget.CompoundButton;import android.widget.LinearLayout;import android.widget.ProgressBar;import android.widget.Switch;import android.widget.TextView;import android.widget.Toast;import androidx.activity.result.ActivityResultLauncher;import androidx.activity.result.contract.ActivityResultContracts;import androidx.appcompat.app.AlertDialog;import androidx.appcompat.app.AppCompatActivity;import androidx.core.content.ContextCompat;import org.json.JSONArray;import org.json.JSONObject;import java.util.HashSet;import java.util.Set;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity{
- private LinearLayout ordersContainer;private ProgressBar progress;private TextView statusText,totalText,pendingCount,doneCount;private Switch openSwitch;private String tab="pending";private final Handler handler=new Handler(Looper.getMainLooper());private final Set<String> knownPending=new HashSet<>();private boolean firstLoad=true,ignoreSwitch=false;
- private final ActivityResultLauncher<String> permissionLauncher=registerForActivityResult(new ActivityResultContracts.RequestPermission(),g->{});
- private final Runnable poll=new Runnable(){public void run(){loadAll(false);handler.postDelayed(this,AppConfig.REFRESH_MS);}};
- @Override protected void onCreate(Bundle b){super.onCreate(b);if(!SessionManager.loggedIn(this)){login();return;}setContentView(R.layout.activity_main);ordersContainer=findViewById(R.id.ordersContainer);progress=findViewById(R.id.progressBar);statusText=findViewById(R.id.statusText);totalText=findViewById(R.id.runningTotal);pendingCount=findViewById(R.id.pendingCount);doneCount=findViewById(R.id.doneCount);openSwitch=findViewById(R.id.openSwitch);((TextView)findViewById(R.id.restaurantName)).setText("🏪 "+SessionManager.name(this));((TextView)findViewById(R.id.restaurantPhone)).setText(SessionManager.phone(this));findViewById(R.id.ringtoneButton).setOnClickListener(v->startActivity(new Intent(this,RingtoneSettingsActivity.class)));findViewById(R.id.logoutButton).setOnClickListener(v->{SessionManager.clear(this);login();});findViewById(R.id.refreshButton).setOnClickListener(v->loadAll(false));findViewById(R.id.pendingTab).setOnClickListener(v->{tab="pending";styleTabs();loadOrders(false);});findViewById(R.id.doneTab).setOnClickListener(v->{tab="done";styleTabs();loadOrders(false);});findViewById(R.id.resetTotalButton).setOnClickListener(v->confirmReset());openSwitch.setOnCheckedChangeListener(this::toggleOpen);requestNotificationPermission();styleTabs();loadAll(true);}
- @Override protected void onResume(){super.onResume();handler.removeCallbacks(poll);handler.postDelayed(poll,AppConfig.REFRESH_MS);}
- @Override protected void onPause(){handler.removeCallbacks(poll);super.onPause();}
- private void requestNotificationPermission(){if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);}
- private void login(){startActivity(new Intent(this,LoginActivity.class));finish();}
- private void forceLogin(){SessionManager.clear(this);Toast.makeText(this,"Login expired. Dobara login karein.",Toast.LENGTH_LONG).show();login();}
- private void loadAll(boolean initial){loadDashboard();loadOrders(initial);}
- private void loadDashboard(){new Thread(()->{try{JSONObject r=ApiClient.get(this,AppConfig.DASHBOARD_URL);if(r.optInt("_http_code")==401){runOnUiThread(this::forceLogin);return;}if(!r.optBoolean("ok"))throw new Exception(r.optString("message","Dashboard load nahi hua"));runOnUiThread(()->{JSONObject a=r.optJSONObject("restaurant");ignoreSwitch=true;openSwitch.setChecked(a!=null&&a.optBoolean("is_open"));ignoreSwitch=false;updateOpenLabel(openSwitch.isChecked());pendingCount.setText(String.valueOf(r.optInt("pending_count")));doneCount.setText(String.valueOf(r.optInt("done_count")));((Button)findViewById(R.id.pendingTab)).setText("PENDING\n"+r.optInt("pending_count"));((Button)findViewById(R.id.doneTab)).setText("DONE\n"+r.optInt("done_count"));totalText.setText(r.optString("running_total","₹0"));});}catch(Exception e){runOnUiThread(()->statusText.setText("Connection error: "+e.getMessage()));}}).start();}
- private void loadOrders(boolean initial){progress.setVisibility(View.VISIBLE);statusText.setText((tab.equals("pending")?"Pending":"Done")+" orders load ho rahe hain…");new Thread(()->{try{JSONObject r=ApiClient.get(this,AppConfig.ORDERS_URL+"?type="+tab);if(r.optInt("_http_code")==401){runOnUiThread(this::forceLogin);return;}if(!r.optBoolean("ok"))throw new Exception(r.optString("message","Orders load nahi hue"));JSONArray arr=r.optJSONArray("orders");if(tab.equals("pending"))detectNew(arr,initial);runOnUiThread(()->render(arr));}catch(Exception e){runOnUiThread(()->{progress.setVisibility(View.GONE);statusText.setText("Connection error: "+e.getMessage());});}}).start();}
- private synchronized void detectNew(JSONArray arr,boolean initial){Set<String> now=new HashSet<>();int fresh=0;double amount=0;if(arr!=null)for(int i=0;i<arr.length();i++){JSONObject o=arr.optJSONObject(i);if(o==null)continue;String id=String.valueOf(o.optInt("id"));now.add(id);if(!firstLoad&&!knownPending.contains(id)){fresh++;amount+=o.optDouble("total_raw",0);}}knownPending.clear();knownPending.addAll(now);if(firstLoad||initial){firstLoad=false;return;}if(fresh>0)NotificationHelper.show(this,"🔔 "+fresh+" New Restaurant Order",fresh+" order aaye hain • Total ₹"+String.format("%.2f",amount));}
- private void render(JSONArray arr){progress.setVisibility(View.GONE);ordersContainer.removeAllViews();int n=arr==null?0:arr.length();statusText.setText((tab.equals("pending")?"Pending":"Done")+" Orders: "+n);if(n==0){TextView e=text("Abhi koi "+tab+" order nahi hai.",18,true);e.setGravity(Gravity.CENTER);e.setPadding(20,80,20,80);ordersContainer.addView(e);return;}for(int i=0;i<n;i++){JSONObject o=arr.optJSONObject(i);if(o!=null)ordersContainer.addView(card(o));}}
- private View card(JSONObject o){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(14),dp(16),dp(14));c.setBackgroundResource(R.drawable.order_card);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(12),dp(8),dp(12),dp(8));c.setLayoutParams(p);c.addView(text("📦 Order #"+o.optString("number"),21,true));c.addView(text("🕒 "+o.optString("date_created"),14,false));JSONArray items=o.optJSONArray("items");if(items!=null)for(int i=0;i<items.length();i++){JSONObject it=items.optJSONObject(i);if(it==null)continue;c.addView(text("• "+it.optInt("qty")+" × "+it.optString("name")+"\n   Rate: "+it.optString("rate")+"   |   Total: "+it.optString("line_total"),16,false));}String note=o.optString("customer_note","");if(!note.isEmpty())c.addView(text("📝 Note: "+note,15,false));TextView total=text("ORDER TOTAL: "+o.optString("total"),19,true);total.setTextColor(Color.rgb(255,122,0));c.addView(total);if(tab.equals("pending")){Button done=new Button(this);done.setText("✅ DONE / FOOD READY");done.setOnClickListener(v->confirmDone(o.optInt("id"),done));c.addView(done);}return c;}
- private void confirmDone(int id,Button b){new AlertDialog.Builder(this).setTitle("Order Done?").setMessage("Kya food ready ho gaya hai?").setNegativeButton("Nahi",null).setPositiveButton("Haan",(d,w)->done(id,b)).show();}
- private void done(int id,Button b){b.setEnabled(false);b.setText("Updating…");new Thread(()->{try{JSONObject body=new JSONObject();body.put("order_id",id);body.put("device_id",ApiClient.deviceId(this));JSONObject r=ApiClient.post(this,AppConfig.DONE_URL,body);if(!r.optBoolean("ok"))throw new Exception(r.optString("message","Update nahi hua"));runOnUiThread(()->{Toast.makeText(this,"Order Done ho gaya",Toast.LENGTH_SHORT).show();loadAll(false);});}catch(Exception e){runOnUiThread(()->{b.setEnabled(true);b.setText("✅ DONE / FOOD READY");Toast.makeText(this,e.getMessage(),Toast.LENGTH_LONG).show();});}}).start();}
- private void toggleOpen(CompoundButton v,boolean checked){if(ignoreSwitch)return;openSwitch.setEnabled(false);new Thread(()->{try{JSONObject b=new JSONObject();b.put("is_open",checked);b.put("device_id",ApiClient.deviceId(this));JSONObject r=ApiClient.post(this,AppConfig.SET_OPEN_URL,b);if(!r.optBoolean("ok"))throw new Exception(r.optString("message","Status change nahi hua"));runOnUiThread(()->{updateOpenLabel(r.optBoolean("is_open"));openSwitch.setEnabled(true);Toast.makeText(this,r.optString("message"),Toast.LENGTH_SHORT).show();});}catch(Exception e){runOnUiThread(()->{ignoreSwitch=true;openSwitch.setChecked(!checked);ignoreSwitch=false;openSwitch.setEnabled(true);Toast.makeText(this,e.getMessage(),Toast.LENGTH_LONG).show();});}}).start();}
- private void updateOpenLabel(boolean open){TextView t=findViewById(R.id.openStatusText);t.setText(open?"OPEN – Orders aa sakte hain":"CLOSED – Naye orders band");t.setTextColor(open?Color.rgb(18,148,71):Color.RED);}
- private void confirmReset(){new AlertDialog.Builder(this).setTitle("Total Reset").setMessage("Current total ₹0 ho jayega. Purana record admin me safe rahega.").setNegativeButton("Cancel",null).setPositiveButton("RESET",(d,w)->reset()).show();}
- private void reset(){new Thread(()->{try{JSONObject b=new JSONObject();b.put("device_id",ApiClient.deviceId(this));JSONObject r=ApiClient.post(this,AppConfig.RESET_URL,b);if(!r.optBoolean("ok"))throw new Exception(r.optString("message","Reset nahi hua"));runOnUiThread(()->{totalText.setText(r.optString("running_total","₹0"));Toast.makeText(this,"Total reset ho gaya",Toast.LENGTH_SHORT).show();});}catch(Exception e){runOnUiThread(()->Toast.makeText(this,e.getMessage(),Toast.LENGTH_LONG).show());}}).start();}
- private void styleTabs(){Button p=findViewById(R.id.pendingTab),d=findViewById(R.id.doneTab);p.setAlpha(tab.equals("pending")?1f:.55f);d.setAlpha(tab.equals("done")?1f:.55f);}
- private TextView text(String s,int size,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(Color.rgb(35,35,35));t.setPadding(0,dp(6),0,dp(6));if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return t;}
- private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
+public class MainActivity extends AppCompatActivity {
+
+    private LinearLayout ordersContainer;
+    private ProgressBar progressBar;
+    private TextView statusText;
+    private TextView totalText;
+    private TextView pendingCount;
+    private TextView doneCount;
+    private Switch openSwitch;
+
+    private String currentTab = "pending";
+
+    private final Handler refreshHandler =
+            new Handler(Looper.getMainLooper());
+
+    private final Set<String> knownPendingOrders =
+            new HashSet<>();
+
+    private boolean firstOrderLoad = true;
+    private boolean ignoreOpenSwitch = false;
+
+    private final ActivityResultLauncher<String>
+            notificationPermissionLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.RequestPermission(),
+                    isGranted -> {
+                        if (isGranted) {
+                            NotificationHelper.createNotificationChannel(this);
+                        } else {
+                            Toast.makeText(
+                                    this,
+                                    "Notification permission बंद है",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+                    }
+            );
+
+    private final Runnable pollingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            loadAllData(false);
+
+            refreshHandler.postDelayed(
+                    this,
+                    AppConfig.REFRESH_MS
+            );
+        }
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        if (!SessionManager.loggedIn(this)) {
+            openLoginScreen();
+            return;
+        }
+
+        setContentView(R.layout.activity_main);
+
+        initializeViews();
+        setRestaurantInformation();
+        setClickListeners();
+
+        requestNotificationPermission();
+        NotificationHelper.createNotificationChannel(this);
+
+        registerFirebaseToken();
+
+        styleTabs();
+        handleNotificationIntent(getIntent());
+
+        loadAllData(true);
+    }
+
+    private void initializeViews() {
+        ordersContainer =
+                findViewById(R.id.ordersContainer);
+
+        progressBar =
+                findViewById(R.id.progressBar);
+
+        statusText =
+                findViewById(R.id.statusText);
+
+        totalText =
+                findViewById(R.id.runningTotal);
+
+        pendingCount =
+                findViewById(R.id.pendingCount);
+
+        doneCount =
+                findViewById(R.id.doneCount);
+
+        openSwitch =
+                findViewById(R.id.openSwitch);
+    }
+
+    private void setRestaurantInformation() {
+        TextView restaurantName =
+                findViewById(R.id.restaurantName);
+
+        TextView restaurantPhone =
+                findViewById(R.id.restaurantPhone);
+
+        restaurantName.setText(
+                "🏪 " + SessionManager.name(this)
+        );
+
+        restaurantPhone.setText(
+                SessionManager.phone(this)
+        );
+    }
+
+    private void setClickListeners() {
+        Button ringtoneButton =
+                findViewById(R.id.ringtoneButton);
+
+        Button logoutButton =
+                findViewById(R.id.logoutButton);
+
+        Button refreshButton =
+                findViewById(R.id.refreshButton);
+
+        Button pendingTab =
+                findViewById(R.id.pendingTab);
+
+        Button doneTab =
+                findViewById(R.id.doneTab);
+
+        Button resetTotalButton =
+                findViewById(R.id.resetTotalButton);
+
+        ringtoneButton.setOnClickListener(view -> {
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    RingtoneSettingsActivity.class
+            );
+
+            startActivity(intent);
+        });
+
+        logoutButton.setOnClickListener(view -> {
+            SessionManager.clear(this);
+            openLoginScreen();
+        });
+
+        refreshButton.setOnClickListener(view ->
+                loadAllData(false)
+        );
+
+        pendingTab.setOnClickListener(view -> {
+            currentTab = "pending";
+            styleTabs();
+            loadOrders(false);
+        });
+
+        doneTab.setOnClickListener(view -> {
+            currentTab = "done";
+            styleTabs();
+            loadOrders(false);
+        });
+
+        resetTotalButton.setOnClickListener(view ->
+                showResetConfirmation()
+        );
+
+        openSwitch.setOnCheckedChangeListener(
+                this::changeRestaurantOpenStatus
+        );
+    }
+
+    private void registerFirebaseToken() {
+        FirebaseMessaging.getInstance()
+                .getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        return;
+                    }
+
+                    String token = task.getResult();
+
+                    if (token != null &&
+                            !token.trim().isEmpty()) {
+
+                        SessionManager.saveFcmToken(
+                                this,
+                                token
+                        );
+                    }
+                });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        setIntent(intent);
+        handleNotificationIntent(intent);
+    }
+
+    private void handleNotificationIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        boolean openPendingOrders =
+                intent.getBooleanExtra(
+                        "open_pending_orders",
+                        false
+                );
+
+        if (openPendingOrders) {
+            currentTab = "pending";
+            styleTabs();
+            loadOrders(false);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        refreshHandler.removeCallbacks(
+                pollingRunnable
+        );
+
+        refreshHandler.postDelayed(
+                pollingRunnable,
+                AppConfig.REFRESH_MS
+        );
+    }
+
+    @Override
+    protected void onPause() {
+        refreshHandler.removeCallbacks(
+                pollingRunnable
+        );
+
+        super.onPause();
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.TIRAMISU) {
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED) {
+
+                notificationPermissionLauncher.launch(
+                        Manifest.permission.POST_NOTIFICATIONS
+                );
+            }
+        }
+    }
+
+    private void openLoginScreen() {
+        Intent intent = new Intent(
+                this,
+                LoginActivity.class
+        );
+
+        startActivity(intent);
+        finish();
+    }
+
+    private void forceLoginAgain() {
+        SessionManager.clear(this);
+
+        Toast.makeText(
+                this,
+                "Login expired. Dobara login karein.",
+                Toast.LENGTH_LONG
+        ).show();
+
+        openLoginScreen();
+    }
+
+    private void loadAllData(boolean initialLoad) {
+        loadDashboard();
+        loadOrders(initialLoad);
+    }
+
+    private void loadDashboard() {
+        new Thread(() -> {
+            try {
+                JSONObject response = ApiClient.get(
+                        this,
+                        AppConfig.DASHBOARD_URL
+                );
+
+                if (response.optInt("_http_code") == 401) {
+                    runOnUiThread(
+                            this::forceLoginAgain
+                    );
+                    return;
+                }
+
+                if (!response.optBoolean("ok")) {
+                    throw new Exception(
+                            response.optString(
+                                    "message",
+                                    "Dashboard load nahi hua"
+                            )
+                    );
+                }
+
+                runOnUiThread(() -> {
+                    JSONObject restaurant =
+                            response.optJSONObject(
+                                    "restaurant"
+                            );
+
+                    boolean isRestaurantOpen =
+                            restaurant != null &&
+                                    restaurant.optBoolean(
+                                            "is_open"
+                                    );
+
+                    ignoreOpenSwitch = true;
+                    openSwitch.setChecked(
+                            isRestaurantOpen
+                    );
+                    ignoreOpenSwitch = false;
+
+                    updateOpenStatusLabel(
+                            isRestaurantOpen
+                    );
+
+                    int pendingOrders =
+                            response.optInt(
+                                    "pending_count"
+                            );
+
+                    int doneOrders =
+                            response.optInt(
+                                    "done_count"
+                            );
+
+                    pendingCount.setText(
+                            String.valueOf(
+                                    pendingOrders
+                            )
+                    );
+
+                    doneCount.setText(
+                            String.valueOf(
+                                    doneOrders
+                            )
+                    );
+
+                    Button pendingButton =
+                            findViewById(
+                                    R.id.pendingTab
+                            );
+
+                    Button doneButton =
+                            findViewById(
+                                    R.id.doneTab
+                            );
+
+                    pendingButton.setText(
+                            "PENDING\n" +
+                                    pendingOrders
+                    );
+
+                    doneButton.setText(
+                            "DONE\n" +
+                                    doneOrders
+                    );
+
+                    totalText.setText(
+                            response.optString(
+                                    "running_total",
+                                    "₹0"
+                            )
+                    );
+                });
+
+            } catch (Exception exception) {
+                runOnUiThread(() ->
+                        statusText.setText(
+                                "Connection error: " +
+                                        exception.getMessage()
+                        )
+                );
+            }
+        }).start();
+    }
+
+    private void loadOrders(boolean initialLoad) {
+        progressBar.setVisibility(View.VISIBLE);
+
+        if ("pending".equals(currentTab)) {
+            statusText.setText(
+                    "Pending orders load ho rahe hain…"
+            );
+        } else {
+            statusText.setText(
+                    "Done orders load ho rahe hain…"
+            );
+        }
+
+        new Thread(() -> {
+            try {
+                String requestUrl =
+                        AppConfig.ORDERS_URL +
+                                "?type=" +
+                                currentTab;
+
+                JSONObject response =
+                        ApiClient.get(
+                                this,
+                                requestUrl
+                        );
+
+                if (response.optInt("_http_code") == 401) {
+                    runOnUiThread(
+                            this::forceLoginAgain
+                    );
+                    return;
+                }
+
+                if (!response.optBoolean("ok")) {
+                    throw new Exception(
+                            response.optString(
+                                    "message",
+                                    "Orders load nahi hue"
+                            )
+                    );
+                }
+
+                JSONArray orders =
+                        response.optJSONArray(
+                                "orders"
+                        );
+
+                if ("pending".equals(currentTab)) {
+                    detectNewOrders(
+                            orders,
+                            initialLoad
+                    );
+                }
+
+                runOnUiThread(() ->
+                        displayOrders(orders)
+                );
+
+            } catch (Exception exception) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(
+                            View.GONE
+                    );
+
+                    statusText.setText(
+                            "Connection error: " +
+                                    exception.getMessage()
+                    );
+                });
+            }
+        }).start();
+    }
+
+    private synchronized void detectNewOrders(
+            JSONArray orders,
+            boolean initialLoad
+    ) {
+        Set<String> currentPendingOrders =
+                new HashSet<>();
+
+        if (orders != null) {
+            for (int index = 0;
+                 index < orders.length();
+                 index++) {
+
+                JSONObject order =
+                        orders.optJSONObject(index);
+
+                if (order == null) {
+                    continue;
+                }
+
+                String orderId =
+                        String.valueOf(
+                                order.optInt("id")
+                        );
+
+                currentPendingOrders.add(orderId);
+
+                if (!firstOrderLoad &&
+                        !knownPendingOrders.contains(
+                                orderId
+                        )) {
+
+                    String orderNumber =
+                            order.optString(
+                                    "number",
+                                    orderId
+                            );
+
+                    String orderTotal =
+                            order.optString(
+                                    "total",
+                                    ""
+                            );
+
+                    NotificationHelper
+                            .showOrderNotification(
+                                    this,
+                                    orderId,
+                                    "🔔 New Order #" +
+                                            orderNumber,
+                                    "Restaurant Total: " +
+                                            orderTotal
+                            );
+                }
+            }
+        }
+
+        knownPendingOrders.clear();
+        knownPendingOrders.addAll(
+                currentPendingOrders
+        );
+
+        if (firstOrderLoad || initialLoad) {
+            firstOrderLoad = false;
+        }
+    }
+
+    private void displayOrders(JSONArray orders) {
+        progressBar.setVisibility(View.GONE);
+        ordersContainer.removeAllViews();
+
+        int orderCount =
+                orders == null
+                        ? 0
+                        : orders.length();
+
+        String heading =
+                "pending".equals(currentTab)
+                        ? "Pending Orders: "
+                        : "Done Orders: ";
+
+        statusText.setText(
+                heading + orderCount
+        );
+
+        if (orderCount == 0) {
+            TextView emptyMessage = createTextView(
+                    "Abhi koi " +
+                            currentTab +
+                            " order nahi hai.",
+                    18,
+                    true
+            );
+
+            emptyMessage.setGravity(
+                    Gravity.CENTER
+            );
+
+            emptyMessage.setPadding(
+                    20,
+                    80,
+                    20,
+                    80
+            );
+
+            ordersContainer.addView(
+                    emptyMessage
+            );
+
+            return;
+        }
+
+        for (int index = 0;
+             index < orderCount;
+             index++) {
+
+            JSONObject order =
+                    orders.optJSONObject(index);
+
+            if (order != null) {
+                ordersContainer.addView(
+                        createOrderCard(order)
+                );
+            }
+        }
+    }
+
+    private View createOrderCard(JSONObject order) {
+        LinearLayout card =
+                new LinearLayout(this);
+
+        card.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        card.setPadding(
+                dp(16),
+                dp(14),
+                dp(16),
+                dp(14)
+        );
+
+        card.setBackgroundResource(
+                R.drawable.order_card
+        );
+
+        LinearLayout.LayoutParams parameters =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        parameters.setMargins(
+                dp(12),
+                dp(8),
+                dp(12),
+                dp(8)
+        );
+
+        card.setLayoutParams(parameters);
+
+        String orderNumber =
+                order.optString(
+                        "number",
+                        ""
+                );
+
+        card.addView(
+                createTextView(
+                        "📦 Order #" +
+                                orderNumber,
+                        21,
+                        true
+                )
+        );
+
+        card.addView(
+                createTextView(
+                        "🕒 " +
+                                order.optString(
+                                        "date_created",
+                                        ""
+                                ),
+                        14,
+                        false
+                )
+        );
+
+        JSONArray items =
+                order.optJSONArray("items");
+
+        if (items != null) {
+            for (int index = 0;
+                 index < items.length();
+                 index++) {
+
+                JSONObject item =
+                        items.optJSONObject(index);
+
+                if (item == null) {
+                    continue;
+                }
+
+                String itemText =
+                        "• " +
+                                item.optInt("qty") +
+                                " × " +
+                                item.optString(
+                                        "name",
+                                        ""
+                                ) +
+                                "\n   Rate: " +
+                                item.optString(
+                                        "rate",
+                                        ""
+                                ) +
+                                "   |   Total: " +
+                                item.optString(
+                                        "line_total",
+                                        ""
+                                );
+
+                card.addView(
+                        createTextView(
+                                itemText,
+                                16,
+                                false
+                        )
+                );
+            }
+        }
+
+        String customerNote =
+                order.optString(
+                        "customer_note",
+                        ""
+                );
+
+        if (!customerNote.trim().isEmpty()) {
+            card.addView(
+                    createTextView(
+                            "📝 Note: " +
+                                    customerNote,
+                            15,
+                            false
+                    )
+            );
+        }
+
+        TextView orderTotal =
+                createTextView(
+                        "ORDER TOTAL: " +
+                                order.optString(
+                                        "total",
+                                        ""
+                                ),
+                        19,
+                        true
+                );
+
+        orderTotal.setTextColor(
+                Color.rgb(
+                        255,
+                        122,
+                        0
+                )
+        );
+
+        card.addView(orderTotal);
+
+        if ("pending".equals(currentTab)) {
+            Button doneButton =
+                    new Button(this);
+
+            doneButton.setText(
+                    "✅ DONE / FOOD READY"
+            );
+
+            doneButton.setOnClickListener(view ->
+                    showDoneConfirmation(
+                            order.optInt("id"),
+                            doneButton
+                    )
+            );
+
+            card.addView(doneButton);
+        }
+
+        return card;
+    }
+
+    private void showDoneConfirmation(
+            int orderId,
+            Button doneButton
+    ) {
+        new AlertDialog.Builder(this)
+                .setTitle("Order Done?")
+                .setMessage(
+                        "Kya food ready ho gaya hai?"
+                )
+                .setNegativeButton(
+                        "Nahi",
+                        null
+                )
+                .setPositiveButton(
+                        "Haan",
+                        (dialog, which) ->
+                                markOrderDone(
+                                        orderId,
+                                        doneButton
+                                )
+                )
+                .show();
+    }
+
+    private void markOrderDone(
+            int orderId,
+            Button doneButton
+    ) {
+        doneButton.setEnabled(false);
+        doneButton.setText("Updating…");
+
+        new Thread(() -> {
+            try {
+                JSONObject requestBody =
+                        new JSONObject();
+
+                requestBody.put(
+                        "order_id",
+                        orderId
+                );
+
+                requestBody.put(
+                        "device_id",
+                        ApiClient.deviceId(this)
+                );
+
+                JSONObject response =
+                        ApiClient.post(
+                                this,
+                                AppConfig.DONE_URL,
+                                requestBody
+                        );
+
+                if (!response.optBoolean("ok")) {
+                    throw new Exception(
+                            response.optString(
+                                    "message",
+                                    "Update nahi hua"
+                            )
+                    );
+                }
+
+                runOnUiThread(() -> {
+                    Toast.makeText(
+                            this,
+                            "Order Done ho gaya",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    loadAllData(false);
+                });
+
+            } catch (Exception exception) {
+                runOnUiThread(() -> {
+                    doneButton.setEnabled(true);
+                    doneButton.setText(
+                            "✅ DONE / FOOD READY"
+                    );
+
+                    Toast.makeText(
+                            this,
+                            exception.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            }
+        }).start();
+    }
+
+    private void changeRestaurantOpenStatus(
+            CompoundButton button,
+            boolean isChecked
+    ) {
+        if (ignoreOpenSwitch) {
+            return;
+        }
+
+        openSwitch.setEnabled(false);
+
+        new Thread(() -> {
+            try {
+                JSONObject requestBody =
+                        new JSONObject();
+
+                requestBody.put(
+                        "is_open",
+                        isChecked
+                );
+
+                requestBody.put(
+                        "device_id",
+                        ApiClient.deviceId(this)
+                );
+
+                JSONObject response =
+                        ApiClient.post(
+                                this,
+                                AppConfig.SET_OPEN_URL,
+                                requestBody
+                        );
+
+                if (!response.optBoolean("ok")) {
+                    throw new Exception(
+                            response.optString(
+                                    "message",
+                                    "Status change nahi hua"
+                            )
+                    );
+                }
+
+                boolean serverOpenStatus =
+                        response.optBoolean(
+                                "is_open"
+                        );
+
+                runOnUiThread(() -> {
+                    ignoreOpenSwitch = true;
+                    openSwitch.setChecked(
+                            serverOpenStatus
+                    );
+                    ignoreOpenSwitch = false;
+
+                    updateOpenStatusLabel(
+                            serverOpenStatus
+                    );
+
+                    openSwitch.setEnabled(true);
+
+                    Toast.makeText(
+                            this,
+                            response.optString(
+                                    "message",
+                                    "Status updated"
+                            ),
+                            Toast.LENGTH_SHORT
+                    ).show();
+                });
+
+            } catch (Exception exception) {
+                runOnUiThread(() -> {
+                    ignoreOpenSwitch = true;
+
+                    openSwitch.setChecked(
+                            !isChecked
+                    );
+
+                    ignoreOpenSwitch = false;
+                    openSwitch.setEnabled(true);
+
+                    Toast.makeText(
+                            this,
+                            exception.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            }
+        }).start();
+    }
+
+    private void updateOpenStatusLabel(
+            boolean isOpen
+    ) {
+        TextView openStatusText =
+                findViewById(
+                        R.id.openStatusText
+                );
+
+        if (isOpen) {
+            openStatusText.setText(
+                    "OPEN – Orders aa sakte hain"
+            );
+
+            openStatusText.setTextColor(
+                    Color.rgb(
+                            18,
+                            148,
+                            71
+                    )
+            );
+        } else {
+            openStatusText.setText(
+                    "CLOSED – Naye orders band"
+            );
+
+            openStatusText.setTextColor(
+                    Color.RED
+            );
+        }
+    }
+
+    private void showResetConfirmation() {
+        new AlertDialog.Builder(this)
+                .setTitle("Total Reset")
+                .setMessage(
+                        "Current total ₹0 ho jayega. " +
+                                "Purana record admin me safe rahega."
+                )
+                .setNegativeButton(
+                        "Cancel",
+                        null
+                )
+                .setPositiveButton(
+                        "RESET",
+                        (dialog, which) ->
+                                resetRunningTotal()
+                )
+                .show();
+    }
+
+    private void resetRunningTotal() {
+        new Thread(() -> {
+            try {
+                JSONObject requestBody =
+                        new JSONObject();
+
+                requestBody.put(
+                        "device_id",
+                        ApiClient.deviceId(this)
+                );
+
+                JSONObject response =
+                        ApiClient.post(
+                                this,
+                                AppConfig.RESET_URL,
+                                requestBody
+                        );
+
+                if (!response.optBoolean("ok")) {
+                    throw new Exception(
+                            response.optString(
+                                    "message",
+                                    "Reset nahi hua"
+                            )
+                    );
+                }
+
+                runOnUiThread(() -> {
+                    totalText.setText(
+                            response.optString(
+                                    "running_total",
+                                    "₹0"
+                            )
+                    );
+
+                    Toast.makeText(
+                            this,
+                            "Total reset ho gaya",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                });
+
+            } catch (Exception exception) {
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                this,
+                                exception.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        }).start();
+    }
+
+    private void styleTabs() {
+        Button pendingButton =
+                findViewById(R.id.pendingTab);
+
+        Button doneButton =
+                findViewById(R.id.doneTab);
+
+        if ("pending".equals(currentTab)) {
+            pendingButton.setAlpha(1.0f);
+            doneButton.setAlpha(0.55f);
+        } else {
+            pendingButton.setAlpha(0.55f);
+            doneButton.setAlpha(1.0f);
+        }
+    }
+
+    private TextView createTextView(
+            String text,
+            int textSize,
+            boolean bold
+    ) {
+        TextView textView =
+                new TextView(this);
+
+        textView.setText(text);
+        textView.setTextSize(textSize);
+
+        textView.setTextColor(
+                Color.rgb(
+                        35,
+                        35,
+                        35
+                )
+        );
+
+        textView.setPadding(
+                0,
+                dp(6),
+                0,
+                dp(6)
+        );
+
+        if (bold) {
+            textView.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
+            );
+        }
+
+        return textView;
+    }
+
+    private int dp(int value) {
+        return Math.round(
+                value *
+                        getResources()
+                                .getDisplayMetrics()
+                                .density
+        );
+    }
 }

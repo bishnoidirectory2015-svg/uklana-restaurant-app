@@ -1,14 +1,162 @@
 package com.uklanafood.restaurant;
 
-import android.content.Intent;import android.media.AudioAttributes;import android.media.MediaPlayer;import android.media.Ringtone;import android.media.RingtoneManager;import android.net.Uri;import android.os.Bundle;import android.widget.TextView;import android.widget.Toast;import androidx.activity.result.ActivityResultLauncher;import androidx.activity.result.contract.ActivityResultContracts;import androidx.appcompat.app.AppCompatActivity;
-public class RingtoneSettingsActivity extends AppCompatActivity{
- private TextView selectedToneText;private MediaPlayer previewPlayer;
- private final ActivityResultLauncher<Intent> picker=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),r->{if(r.getResultCode()!=RESULT_OK||r.getData()==null)return;Uri u=r.getData().getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);if(u==null){Toast.makeText(this,"Silent ringtone select nahi ki ja sakti",Toast.LENGTH_LONG).show();return;}RingtoneHelper.save(this,u,name(u));update();Toast.makeText(this,"Order ringtone save ho gayi",Toast.LENGTH_SHORT).show();});
- @Override protected void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_ringtone_settings);selectedToneText=findViewById(R.id.selectedToneText);findViewById(R.id.chooseRingtoneButton).setOnClickListener(v->openPicker());findViewById(R.id.testRingtoneButton).setOnClickListener(v->test());findViewById(R.id.stopTestButton).setOnClickListener(v->stop());findViewById(R.id.defaultRingtoneButton).setOnClickListener(v->{stop();RingtoneHelper.reset(this);update();});findViewById(R.id.backButton).setOnClickListener(v->finish());update();}
- private void openPicker(){Intent i=new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);i.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE,RingtoneManager.TYPE_RINGTONE|RingtoneManager.TYPE_NOTIFICATION|RingtoneManager.TYPE_ALARM);i.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE,"Order Ringtone Select Karein");i.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT,false);picker.launch(i);}
- private void update(){selectedToneText.setText("Selected: "+RingtoneHelper.getSelectedName(this));}
- private String name(Uri u){try{Ringtone r=RingtoneManager.getRingtone(this,u);return r==null?"Selected Ringtone":r.getTitle(this);}catch(Exception e){return "Selected Ringtone";}}
- private void test(){stop();try{previewPlayer=new MediaPlayer();previewPlayer.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());previewPlayer.setDataSource(this,RingtoneHelper.getSelectedUri(this));previewPlayer.prepare();previewPlayer.start();}catch(Exception e){Toast.makeText(this,"Ringtone play nahi hui",Toast.LENGTH_LONG).show();}}
- private void stop(){try{if(previewPlayer!=null){previewPlayer.stop();previewPlayer.release();}}catch(Exception ignored){}previewPlayer=null;}
- @Override protected void onDestroy(){stop();super.onDestroy();}
+import android.content.Intent;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class RingtoneSettingsActivity extends AppCompatActivity {
+
+    private TextView txtSelectedRingtone;
+
+    private final ActivityResultLauncher<Intent> ringtonePickerLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() != RESULT_OK ||
+                                result.getData() == null) {
+                            return;
+                        }
+
+                        Uri selectedUri;
+
+                        if (android.os.Build.VERSION.SDK_INT >=
+                                android.os.Build.VERSION_CODES.TIRAMISU) {
+
+                            selectedUri = result.getData().getParcelableExtra(
+                                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                                    Uri.class
+                            );
+                        } else {
+                            selectedUri = result.getData().getParcelableExtra(
+                                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI
+                            );
+                        }
+
+                        if (selectedUri != null) {
+                            RingtoneHelper.saveRingtone(
+                                    RingtoneSettingsActivity.this,
+                                    selectedUri
+                            );
+
+                            NotificationHelper.recreateNotificationChannel(
+                                    RingtoneSettingsActivity.this
+                            );
+
+                            updateSelectedRingtoneName();
+
+                            Toast.makeText(
+                                    this,
+                                    "Ringtone successfully saved",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    }
+            );
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_ringtone_settings);
+
+        txtSelectedRingtone = findViewById(R.id.txtSelectedRingtone);
+
+        Button btnChooseRingtone = findViewById(R.id.btnChooseRingtone);
+        Button btnTestRingtone = findViewById(R.id.btnTestRingtone);
+        Button btnDefaultRingtone = findViewById(R.id.btnDefaultRingtone);
+        Button btnNotificationSettings =
+                findViewById(R.id.btnNotificationSettings);
+
+        updateSelectedRingtoneName();
+
+        btnChooseRingtone.setOnClickListener(view -> openRingtonePicker());
+
+        btnTestRingtone.setOnClickListener(view ->
+                NotificationHelper.showTestNotification(this)
+        );
+
+        btnDefaultRingtone.setOnClickListener(view -> {
+            RingtoneHelper.resetToDefault(this);
+            NotificationHelper.recreateNotificationChannel(this);
+            updateSelectedRingtoneName();
+
+            Toast.makeText(
+                    this,
+                    "Default ringtone restored",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        btnNotificationSettings.setOnClickListener(view ->
+                openAndroidNotificationSettings()
+        );
+    }
+
+    private void openRingtonePicker() {
+        Intent intent = new Intent(
+                RingtoneManager.ACTION_RINGTONE_PICKER
+        );
+
+        intent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_TYPE,
+                RingtoneManager.TYPE_NOTIFICATION
+        );
+
+        intent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_TITLE,
+                "Select New Order Ringtone"
+        );
+
+        intent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                RingtoneHelper.getRingtone(this)
+        );
+
+        intent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT,
+                true
+        );
+
+        intent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT,
+                false
+        );
+
+        ringtonePickerLauncher.launch(intent);
+    }
+
+    private void updateSelectedRingtoneName() {
+        txtSelectedRingtone.setText(
+                RingtoneHelper.getRingtoneName(this)
+        );
+    }
+
+    private void openAndroidNotificationSettings() {
+        try {
+            Intent intent = new Intent(
+                    Settings.ACTION_APP_NOTIFICATION_SETTINGS
+            );
+
+            intent.putExtra(
+                    Settings.EXTRA_APP_PACKAGE,
+                    getPackageName()
+            );
+
+            startActivity(intent);
+        } catch (Exception exception) {
+            Toast.makeText(
+                    this,
+                    "Notification settings could not be opened",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
 }
