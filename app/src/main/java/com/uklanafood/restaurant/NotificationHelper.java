@@ -12,6 +12,7 @@ import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -32,6 +33,8 @@ public final class NotificationHelper {
 
         if (isDuplicateNotification(context, safeOrderId)) return;
         saveLastNotification(context, safeOrderId);
+
+        wakeScreen(context);
 
         String channelId = createNotificationChannel(context);
 
@@ -99,6 +102,21 @@ public final class NotificationHelper {
         Notification notification = builder.build();
         notification.flags |= Notification.FLAG_INSISTENT;
         NotificationManagerCompat.from(context).notify(requestCode, notification);
+    }
+
+    private static void wakeScreen(Context context) {
+        try {
+            PowerManager powerManager =
+                    (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (powerManager == null) return;
+
+            PowerManager.WakeLock wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK
+                            | PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "UklanaFood:NewOrderWakeLock"
+            );
+            wakeLock.acquire(10_000L);
+        } catch (Exception ignored) { }
     }
 
     public static void showTestNotification(Context context) {

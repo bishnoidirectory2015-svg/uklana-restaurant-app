@@ -1,7 +1,10 @@
 package com.uklanafood.restaurant;
 
 import android.Manifest;
+import android.app.NotificationManager;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -107,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
         setClickListeners();
 
         requestNotificationPermission();
+        requestFullScreenIntentPermission();
         NotificationHelper.createNotificationChannel(this);
 
         registerFirebaseToken();
@@ -115,6 +119,31 @@ public class MainActivity extends AppCompatActivity {
         handleNotificationIntent(getIntent());
 
         loadAllData(true);
+    }
+
+
+    private void requestFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null || manager.canUseFullScreenIntent()) return;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Full-screen order alert चालू करें")
+                .setMessage("Screen बंद होने पर नया order full screen दिखाने के लिए अगली screen में Uklana Restaurant को अनुमति दें।")
+                .setPositiveButton("Allow", (dialog, which) -> {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    } catch (Exception exception) {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    }
+                })
+                .setNegativeButton("Later", null)
+                .show();
     }
 
     private void initializeViews() {
