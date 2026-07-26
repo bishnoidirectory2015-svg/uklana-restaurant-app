@@ -1,6 +1,7 @@
 package com.uklanafood.restaurant;
 
 import android.content.Intent;
+import android.content.ContentResolver;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -42,6 +43,15 @@ public class RingtoneSettingsActivity extends AppCompatActivity {
                         }
 
                         if (selectedUri != null) {
+                            try {
+                                getContentResolver().takePersistableUriPermission(
+                                        selectedUri,
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                );
+                            } catch (Exception ignored) {
+                                // Many built-in ringtone providers do not expose persistable grants.
+                            }
+
                             RingtoneHelper.saveRingtone(
                                     RingtoneSettingsActivity.this,
                                     selectedUri
@@ -130,6 +140,7 @@ public class RingtoneSettingsActivity extends AppCompatActivity {
                 false
         );
 
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         ringtonePickerLauncher.launch(intent);
     }
 
