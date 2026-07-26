@@ -117,7 +117,7 @@ public class RingtoneSettingsActivity extends AppCompatActivity {
 
         intent.putExtra(
                 RingtoneManager.EXTRA_RINGTONE_TYPE,
-                RingtoneManager.TYPE_NOTIFICATION
+                RingtoneManager.TYPE_RINGTONE
         );
 
         intent.putExtra(
