@@ -56,7 +56,6 @@ public class OrderAlertActivity extends AppCompatActivity {
         );
 
         Button open = findViewById(R.id.openOrderButton);
-        Button dismiss = findViewById(R.id.dismissAlertButton);
 
         open.setOnClickListener(v -> {
             stopAlert();
@@ -68,10 +67,6 @@ public class OrderAlertActivity extends AppCompatActivity {
             finish();
         });
 
-        dismiss.setOnClickListener(v -> {
-            stopAlert();
-            finish();
-        });
 
         startAlert();
     }

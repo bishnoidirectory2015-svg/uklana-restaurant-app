@@ -48,14 +48,9 @@
         android:id="@+id/openOrderButton"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="OPEN ORDER"
+        android:text="ACCEPT &amp; SEE ORDER"
         android:textSize="18sp"
         android:layout_marginTop="24dp" />
 
-    <Button
-        android:id="@+id/dismissAlertButton"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:text="DISMISS"
-        android:layout_marginTop="10dp" />
+
 </LinearLayout>
