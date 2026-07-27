@@ -38,7 +38,7 @@ public final class RingtoneHelper {
 
         if (savedUri == null || savedUri.trim().isEmpty()) {
             return RingtoneManager.getDefaultUri(
-                     RingtoneManager.TYPE_RINGTONE
+                    RingtoneManager.TYPE_NOTIFICATION
             );
         }
 
@@ -46,7 +46,7 @@ public final class RingtoneHelper {
             return Uri.parse(savedUri);
         } catch (Exception exception) {
             return RingtoneManager.getDefaultUri(
-                     RingtoneManager.TYPE_RINGTONE
+                    RingtoneManager.TYPE_NOTIFICATION
             );
         }
     }

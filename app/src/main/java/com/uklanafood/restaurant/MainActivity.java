@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.provider.Settings;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -16,6 +18,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Switch;
@@ -33,6 +36,9 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -778,13 +784,31 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                card.addView(
-                        createTextView(
-                                itemText,
-                                16,
-                                false
-                        )
-                );
+                LinearLayout itemRow = new LinearLayout(this);
+                itemRow.setOrientation(LinearLayout.HORIZONTAL);
+                itemRow.setGravity(Gravity.CENTER_VERTICAL);
+                itemRow.setPadding(0, dp(7), 0, dp(7));
+
+                ImageView itemImage = new ImageView(this);
+                LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(72), dp(72));
+                imageParams.setMargins(0, 0, dp(12), 0);
+                itemImage.setLayoutParams(imageParams);
+                itemImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                itemImage.setContentDescription(itemName);
+                itemImage.setBackgroundColor(Color.rgb(245, 245, 245));
+
+                TextView itemTextView = createTextView(itemText, 16, false);
+                itemTextView.setLayoutParams(new LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f
+                ));
+
+                itemRow.addView(itemImage);
+                itemRow.addView(itemTextView);
+                card.addView(itemRow);
+
+                loadItemImage(itemImage, item.optString("image", ""));
             }
         }
 
@@ -845,6 +869,53 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return card;
+    }
+
+    private void loadItemImage(ImageView imageView, String imageUrl) {
+        if (imageUrl == null || imageUrl.trim().isEmpty()) {
+            imageView.setImageResource(R.drawable.uklana_restaurant_logo);
+            imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            return;
+        }
+
+        imageView.setTag(imageUrl);
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(15000);
+                connection.setInstanceFollowRedirects(true);
+                connection.connect();
+
+                if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 300) {
+                    throw new Exception("Image HTTP " + connection.getResponseCode());
+                }
+
+                try (InputStream input = connection.getInputStream()) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(input);
+                    if (bitmap != null) {
+                        runOnUiThread(() -> {
+                            if (imageUrl.equals(imageView.getTag())) {
+                                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                imageView.setImageBitmap(bitmap);
+                            }
+                        });
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+
+            runOnUiThread(() -> {
+                if (imageUrl.equals(imageView.getTag())) {
+                    imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+                    imageView.setImageResource(R.drawable.uklana_restaurant_logo);
+                }
+            });
+        }).start();
     }
 
     private void showDoneConfirmation(
